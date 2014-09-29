@@ -17,6 +17,30 @@
  */
 
 var express = require('express');
+var path = require('path');
 var router = express.Router();
+
+var api_data = require(path.join(__dirname, '..', '..', '..', 'api', 'chennai', 'scraper', 'aggregate'));
+
+
+router.get('/refresh', function (req, res)
+{
+    var RegNo = req.query.regno;
+    var onGetData = function (err, data)
+    {
+        res.send(data);
+    };
+    api_data.getData(RegNo, false, onGetData)
+});
+
+router.get('/first', function (req, res)
+{
+    var RegNo = req.query.regno;
+    var onGetData = function (err, data)
+    {
+        res.send(data);
+    };
+    api_data.getData(RegNo, true, onGetData)
+});
 
 module.exports = router;

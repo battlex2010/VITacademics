@@ -19,11 +19,19 @@
 var cache = require('memory-cache');
 var cheerio = require('cheerio');
 var cookie = require('cookie');
-var debug = require('debug')('VITacademics');
 var path = require('path');
 var unirest = require('unirest');
 
-var errors = require(path.join(__dirname, '..', 'error'));
+var log;
+if (process.env.LOGENTRIES_TOKEN)
+{
+    var logentries = require('node-logentries');
+    log = logentries.logger({
+                                token: process.env.LOGENTRIES_TOKEN
+                            });
+}
+
+var errors = require(path.join(__dirname, '..', '..', 'error'));
 var mongo = require(path.join(__dirname, '..', 'db', 'mongo'));
 
 
@@ -35,14 +43,19 @@ exports.submitCaptcha = function (RegNo, DoB, Captcha, callback)
         var CookieJar = unirest.jar();
         var myCookie = cache.get(RegNo);
         var cookieSerial = cookie.serialize(myCookie[0], myCookie[1]);
-        var uri = 'https://academics.vit.ac.in/parent/parent_login_submit.asp';
-        CookieJar.add(unirest.cookie(cookieSerial), uri);
+        var submitUri = 'https://academics.vit.ac.in/parent/parent_login_submit.asp';
+        CookieJar.add(unirest.cookie(cookieSerial), submitUri);
         var onPost = function (response)
         {
             if (response.error)
             {
-                debug('VIT Academics connection failed');
-                callback(true, errors.codes.Down);
+                data.Error = errors.codes.Down;
+                if (log)
+                {
+                    log.log('debug', data);
+                }
+                console.log('VIT Academics connection failed');
+                callback(true, data);
             }
             else
             {
@@ -75,9 +88,14 @@ exports.submitCaptcha = function (RegNo, DoB, Captcha, callback)
                         {
                             if (err)
                             {
-                                debug('MongoDB connection failed');
-                                // callback(true, errors.codes.MongoDown);
-                                // Asynchronous, may or may not be reachable, need a better solution
+                                if (log)
+                                {
+                                    log.log('debug', {
+                                        RegNo: RegNo,
+                                        Error: errors.codes.MongoDown
+                                    });
+                                }
+                                console.log('MongoDB connection failed');
                             }
                         };
                         mongo.update(doc, ['DoB'], onInsert);
@@ -92,7 +110,7 @@ exports.submitCaptcha = function (RegNo, DoB, Captcha, callback)
                 }
             }
         };
-        unirest.post(uri)
+        unirest.post(submitUri)
             .jar(CookieJar)
             .form({
                       'wdregno': RegNo,

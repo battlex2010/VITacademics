@@ -22,7 +22,7 @@ var cookie = require('cookie');
 var path = require('path');
 var unirest = require('unirest');
 
-var errors = require(path.join(__dirname, '..', 'error'));
+var errors = require(path.join(__dirname, '..', '..', 'error'));
 
 
 exports.scrapeMarks = function (RegNo, sem, callback)
@@ -34,9 +34,12 @@ exports.scrapeMarks = function (RegNo, sem, callback)
 
     var onRequest = function (response)
     {
-        if (response.error) callback(false, [
-            {Error: errors.codes.Down}
-        ]);
+        if (response.error)
+        {
+            callback(false, [
+                {Error: errors.codes.Down}
+            ]);
+        }
         else
         {
             var marks = [];

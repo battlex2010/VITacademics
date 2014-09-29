@@ -18,14 +18,23 @@
 
 var async = require('async');
 var cache = require('memory-cache');
-var debug = require('debug')('VITacademics');
 var path = require('path');
 
+var log;
+if (process.env.LOGENTRIES_TOKEN)
+{
+    var logentries = require('node-logentries');
+    log = logentries.logger({
+                                token: process.env.LOGENTRIES_TOKEN
+                            });
+}
+
 var attendance = require(path.join(__dirname, 'attendance'));
-var errors = require(path.join(__dirname, '..', 'error'));
+var errors = require(path.join(__dirname, '..', '..', 'error'));
 var marks = require(path.join(__dirname, 'marks'));
 var mongo = require(path.join(__dirname, '..', 'db', 'mongo'));
 var timetable = require(path.join(__dirname, 'timetable'));
+var friends = require(path.join(__dirname, '..', 'friends', 'generate'));
 
 
 exports.getData = function (RegNo, firsttime, callback)
@@ -33,32 +42,42 @@ exports.getData = function (RegNo, firsttime, callback)
     var data = {RegNo: RegNo};
     if (cache.get(RegNo) !== null)
     {
-        var sem = 'FS';
+        var sem = process.env.VELLORE_SEM || 'FS';
 
-        var attendanceTask = function (asyncCallback)
+        var parallelTasks = {};
+
+        parallelTasks.Attendance = function (asyncCallback)
         {
             attendance.scrapeAttendance(RegNo, sem, asyncCallback)
         };
-        var marksTask = function (asyncCallback)
+
+        parallelTasks.Marks = function (asyncCallback)
         {
             marks.scrapeMarks(RegNo, sem, asyncCallback)
         };
-        var timetableTask = function (asyncCallback)
+        parallelTasks.Timetable = function (asyncCallback)
         {
             timetable.scrapeTimetable(RegNo, sem, firsttime, asyncCallback)
         };
 
-        var parallelTasks = {
-            Attendance: attendanceTask,
-            Marks: marksTask,
-            Timetable: timetableTask
-        };
+        if (firsttime)
+        {
+            parallelTasks.Token = function (asyncCallback)
+            {
+                friends.getToken(RegNo, asyncCallback)
+            };
+        }
 
         var onFinish = function (err, results)
         {
             if (err || results.Timetable.Error.Code !== 0)
             {
                 data.Error = results.Timetable.Error;
+                if (log)
+                {
+                    log.log('debug', data);
+                }
+                console.log(data.Error);
                 callback(true, data);
             }
             else
@@ -89,9 +108,13 @@ exports.getData = function (RegNo, firsttime, callback)
                         {
                             foundMarks = true;
                             if (elt['Type'] !== 'Project')
+                            {
                                 elt.Supported = 'yes';
+                            }
                             else
+                            {
                                 elt.Supported = 'no';
+                            }
                             delete elt['Class Number'];
                             delete elt['Course Code'];
                             delete elt['Course Title'];
@@ -116,7 +139,10 @@ exports.getData = function (RegNo, firsttime, callback)
                 };
                 var doneCollate = function (err, newData)
                 {
-                    if (err) callback(true, errors.codes.Other);
+                    if (err)
+                    {
+                        callback(true, errors.codes.Other);
+                    }
                     else
                     {
                         data.Courses = newData;
@@ -124,14 +150,18 @@ exports.getData = function (RegNo, firsttime, callback)
                         {
                             if (err)
                             {
-                                debug('MongoDB connection failed');
-                                // callback(true, errors.codes.MongoDown);
-                                // Asynchronous, may or may not be reachable, need a better solution
+                                data.Error = errors.codes.MongoDown;
+                                if (log)
+                                {
+                                    log.log('debug', data);
+                                }
+                                console.log('MongoDB connection failed');
                             }
                         };
                         if (firsttime)
                         {
                             data.Timetable = results.Timetable.Timetable;
+                            data.Token = results.Token;
                             mongo.update(data, ['Timetable', 'Courses'], onInsert);
                         }
                         else

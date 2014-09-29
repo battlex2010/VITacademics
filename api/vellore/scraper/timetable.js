@@ -23,7 +23,7 @@ var cookie = require('cookie');
 var path = require('path');
 var unirest = require('unirest');
 
-var errors = require(path.join(__dirname, '..', 'error'));
+var errors = require(path.join(__dirname, '..', '..', 'error'));
 
 
 exports.scrapeTimetable = function (RegNo, sem, firsttime, callback)
@@ -34,7 +34,10 @@ exports.scrapeTimetable = function (RegNo, sem, firsttime, callback)
     var cookieSerial = cookie.serialize(myCookie[0], myCookie[1]);
     var onRequest = function (response)
     {
-        if (response.error) callback(true, {Error: errors.codes.Down});
+        if (response.error)
+        {
+            callback(true, {Error: errors.codes.Down});
+        }
         else
         {
             var timetable = {
@@ -105,9 +108,13 @@ exports.scrapeTimetable = function (RegNo, sem, firsttime, callback)
                                 var text = $('td').eq(elt).text().split(' ');
                                 var sub = text[0] + text[2];
                                 if (tmp[sub])
+                                {
                                     day.push(Number(tmp[sub]));
+                                }
                                 else
+                                {
                                     day.push(0);
+                                }
                             }
                             switch (i)
                             {

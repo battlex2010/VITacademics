@@ -17,26 +17,42 @@
  */
 
 var cache = require('memory-cache');
-var cookie = require('cookie');
-var debug = require('debug')('VITacademics');
 var path = require('path');
 var unirest = require('unirest');
 
-var errors = require(path.join(__dirname, '..', 'error'));
+var log;
+if (process.env.LOGENTRIES_TOKEN)
+{
+    var logentries = require('node-logentries');
+    log = logentries.logger({
+                                token: process.env.LOGENTRIES_TOKEN
+                            });
+}
+
+var errors = require(path.join(__dirname, '..', '..', 'error'));
 
 
 exports.getCaptcha = function (RegNo, callback)
 {
-    var uri = 'https://academics.vit.ac.in/parent/captcha.asp';
+    var captchaUri = 'https://academics.vit.ac.in/parent/captcha.asp';
+    var data = {
+        RegNo: RegNo
+    };
     var onRequest = function (response)
     {
         if (response.error)
         {
-            debug('VIT Academics connection failed');
-            callback(true, errors.codes.Down);
+            data.Error = errors.codes.Down;
+            if (log)
+            {
+                log.log('debug', data);
+            }
+            console.log('VIT Academics connection failed');
+            callback(true, data);
         }
         else
         {
+            var validity = 2; // In Minutes
             var myCookie = [];
             var onEach = function (key)
             {
@@ -50,11 +66,11 @@ exports.getCaptcha = function (RegNo, callback)
                 return true;
             };
             Object.keys(response.cookies).forEach(onEach);
-            cache.put(RegNo, myCookie, 180000);
+            cache.put(RegNo, myCookie, validity * 60 * 1000);
             callback(null, response.body);
         }
     };
-    unirest.get(uri)
+    unirest.get(captchaUri)
         .encoding(null)
         .set('Content-Type', 'image/bmp')
         .end(onRequest);

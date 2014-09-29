@@ -16,15 +16,28 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-var error = {
-    Success: {Message: 'Successful Execution', Code: 0},
-    TimedOut: {Message: 'Session timed out', Code: 1},
-    Invalid: {Message: 'Invalid Credentials or Captcha', Code: 2},
-    Down: {Message: 'VIT\'s servers may be down or we may be facing a connectivity issue', Code: 3},
-    MongoDown: {Message: 'Our MongoDB may be down or we may be facing a connectivity issue', Code: 4},
-    ToDo: {Message: 'This feature is incomplete', Code: 7},
-    Outage: {Message: 'Our backend servers may be down or you may be facing a connectivity issue', Code: 8},
-    Other: {Message: 'An unforeseen error has occurred', Code: 9}
-};
+var log;
+if (process.env.LOGENTRIES_TOKEN)
+{
+    var logentries = require('node-logentries');
+    log = logentries.logger({
+                                token: process.env.LOGENTRIES_TOKEN
+                            });
+}
 
-module.exports.codes = error;
+if (process.env.NEWRELIC_APP_NAME && process.env.NEWRELIC_LICENSE)
+{
+    var app_name = process.env.NEWRELIC_APP_NAME;
+    var license = process.env.NEWRELIC_LICENSE;
+    if (log)
+        log.info('Using New Relic');
+    console.log('Using New Relic');
+}
+
+exports.config = {
+    app_name: [app_name],
+    license_key: license,
+    logging: {
+        level: 'info'
+    }
+};

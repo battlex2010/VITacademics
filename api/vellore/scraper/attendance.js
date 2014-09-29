@@ -23,7 +23,7 @@ var cookie = require('cookie');
 var path = require('path');
 var unirest = require('unirest');
 
-var errors = require(path.join(__dirname, '..', 'error'));
+var errors = require(path.join(__dirname, '..', '..', 'error'));
 
 
 exports.scrapeAttendance = function (RegNo, sem, callback)
@@ -34,9 +34,12 @@ exports.scrapeAttendance = function (RegNo, sem, callback)
     var cookieSerial = cookie.serialize(myCookie[0], myCookie[1]);
     var onRequest = function (response)
     {
-        if (response.error) callback(false, [
-            {Error: errors.codes.Down}
-        ]);
+        if (response.error)
+        {
+            callback(false, [
+                {Error: errors.codes.Down}
+            ]);
+        }
         else
         {
             var attendance = [];
@@ -76,9 +79,12 @@ exports.scrapeAttendance = function (RegNo, sem, callback)
                     CookieJar.add(unirest.cookie(cookieSerial), detailsUri);
                     var onPost = function (response)
                     {
-                        if (response.error) asyncCallback(false, [
-                            {Error: errors.codes.Down}
-                        ]);
+                        if (response.error)
+                        {
+                            asyncCallback(false, [
+                                {Error: errors.codes.Down}
+                            ]);
+                        }
                         else
                         {
                             delete doc.form;
@@ -106,7 +112,7 @@ exports.scrapeAttendance = function (RegNo, sem, callback)
                             }
                             catch (ex)
                             {
-                                doc.Details = 'None';
+                                doc.Details = [];
                                 asyncCallback(false, doc);
                             }
                         }
