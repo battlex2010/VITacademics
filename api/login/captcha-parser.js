@@ -93,26 +93,39 @@ var getCaptcha = function (img) {
         return flag;
     };
 
+    var swap = function(sorter, first, second){
+        var tmp = sorter[first];
+        sorter[first] = sorter[second];
+        sorter[second] = first;
+    }
+
+    var partition = function(sorter, left, right){
+        var pivot = sorter[Math.floor((right+left)/2)];
+        var i = left, j = right;
+        while(i <= j){
+            while(sorter[i].indx < pivot.indx)
+                i++;
+            while(sorter[j].indx > pivot.idx)
+                j--;
+            if(i <= j){
+                swap(sorter, i, j);
+                i++;
+                j--;
+            }
+        }
+        return i;
+    }
+
     var sort = function (sorter, captcha) {
-        for (var i = 0; i < sorter.length; ++i) {
-            var less = sorter[i];
-            var swap = 0;
-            var ls = i;
-            for (var k = i; k < sorter.length; k++) {
-                if (sorter[k] < less) {
-                    less = sorter[k];
-                    ls = k;
-                    swap = 1;
-                }
-            }
-            if (swap) {
-                var temps = sorter[i];
-                sorter[i] = sorter[ls];
-                sorter[ls] = temps;
-                var tempc = captcha[i];
-                captcha[i] = captcha[ls];
-                captcha[ls] = tempc;
-            }
+        var index;
+
+        if(sorter.length > 1){
+            index = partition(sorter, left, right);
+
+            if(left < index - 1)
+                sort(sorter, left, index-1);
+            if(index < right)
+                sort(sorter, index, right);
         }
     };
 
@@ -134,18 +147,19 @@ var getCaptcha = function (img) {
     var skipstart = [];
     var skipend = [];
     var sorter = [];
-    var captcha = [];
     for (var l = 0; l < 36; ++l) {
         var mask = keys[order[l]];
         var f = 0;
         for (x = xoff; x < 25; ++x) {
             for (y = yoff; y < 132; ++y) {
+                var captchaContainer = {};
                 if (!(skip(skipstart, skipend, y))) {
                     if (matchImg(x, y, img, mask)) {
                         skipstart.push(y);
                         skipend.push(y + mask[0].length);
-                        sorter.push(y);
-                        captcha.push(order[l]);
+                        captchaContainer.indx = y;
+                        captchaContainer.dat = order[l];
+                        sorter.push(captchaContainer);
                         f = f + 1;
                     }
                 }
@@ -155,10 +169,10 @@ var getCaptcha = function (img) {
             break;
         }
     }
-    sort(sorter, captcha);
+    sort(sorter);
     var res = '';
-    for (var i = 0; i < captcha.length; ++i) {
-        res = res + captcha[i];
+    for (var i = 0; i < sorter.length; ++i) {
+        res = res + sorter[i].dat;
     }
     return res;
 };
